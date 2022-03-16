@@ -736,12 +736,12 @@ mod tests {
             block_number: StarknetBlockNumber(0),
             // State update actually doesn't change the state hence 0 root
             global_root: GlobalRoot(StarkHash::ZERO),
-            origin: ETH_ORIG.clone(),
+            origin: *ETH_ORIG,
         };
         pub static ref STATE_UPDATE_LOG1: ethereum::log::StateUpdateLog = ethereum::log::StateUpdateLog {
             block_number: StarknetBlockNumber(1),
             global_root: GlobalRoot(*B),
-            origin: ETH_ORIG.clone(),
+            origin: *ETH_ORIG,
         };
         pub static ref BLOCK0: reply::Block = reply::Block {
             block_hash: Some(StarknetBlockHash(*A)),
@@ -790,9 +790,9 @@ mod tests {
         lazy_static::lazy_static! {
             static ref UPDATES: Arc<tokio::sync::RwLock<Vec<Vec<ethereum::log::StateUpdateLog>>>> =
             Arc::new(tokio::sync::RwLock::new(vec![
-                vec![STATE_UPDATE_LOG0.clone(), STATE_UPDATE_LOG1.clone()],
-                vec![STATE_UPDATE_LOG0.clone()],
-                vec![STATE_UPDATE_LOG0.clone()],
+                vec![*STATE_UPDATE_LOG0, *STATE_UPDATE_LOG1],
+                vec![*STATE_UPDATE_LOG0],
+                vec![*STATE_UPDATE_LOG0],
             ]));
         }
 
@@ -863,12 +863,9 @@ mod tests {
     async fn l1_reorg() {
         let results = [
             // Case 0: single block in L1, reorg on genesis
-            (vec![STATE_UPDATE_LOG0.clone()], 0),
+            (vec![*STATE_UPDATE_LOG0], 0),
             // Case 1: 2 blocks in L1, reorg on block #1
-            (
-                vec![STATE_UPDATE_LOG0.clone(), STATE_UPDATE_LOG1.clone()],
-                1,
-            ),
+            (vec![*STATE_UPDATE_LOG0, *STATE_UPDATE_LOG1], 1),
         ]
         .into_iter()
         .map(|(updates, reorg_on_block)| async move {
@@ -996,9 +993,6 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn l2_update() {
-        let chain = ethereum::Chain::Goerli;
-        let sync_state = Arc::new(state::SyncState::default());
-
         // Incoming L2 update
         let block = || BLOCK0.clone();
         let state_update = || STATE_UPDATE0.clone();
@@ -1021,10 +1015,10 @@ mod tests {
             // Case 0: no L1 head
             None,
             // Case 1: some L1 head
-            Some(STATE_UPDATE_LOG0.clone()),
+            Some(*STATE_UPDATE_LOG0),
         ]
         .into_iter()
-        .map(|update_log| async {
+        .map(|update_log| async move {
             let storage = Storage::in_memory().unwrap();
             let connection = storage.connection().unwrap();
 
@@ -1036,9 +1030,9 @@ mod tests {
             let _jh = tokio::spawn(state::sync(
                 storage.clone(),
                 Web3::new(FakeTransport),
-                chain,
+                ethereum::Chain::Goerli,
                 FakeSequencer,
-                sync_state.clone(),
+                Arc::new(state::SyncState::default()),
                 l1_noop,
                 l2,
             ));

@@ -16,7 +16,7 @@ use crate::{
 /// reorganisations.
 pub struct LogFetcher<T>
 where
-    T: MetaLog + PartialEq + std::fmt::Debug + Clone,
+    T: MetaLog + PartialEq + std::fmt::Debug + Copy + Clone,
 {
     head: Option<T>,
     genesis: EthereumBlockNumber,
@@ -40,7 +40,7 @@ impl From<anyhow::Error> for FetchError {
 
 impl<T> LogFetcher<T>
 where
-    T: MetaLog + PartialEq + std::fmt::Debug + Clone,
+    T: MetaLog + PartialEq + std::fmt::Debug + Copy + Clone,
 {
     /// Creates a [LogFetcher] which fetches logs starting from `head`'s origin on L1.
     /// If `head` is [None] then the starting point is genesis.
@@ -63,15 +63,15 @@ where
         self.head = head;
     }
 
-    pub fn head(&self) -> &Option<T> {
-        &self.head
+    pub fn head(&self) -> Option<T> {
+        self.head
     }
 
     /// Fetches the next set of logs from L1. This set may be empty, in which
     /// case we have reached the current end of the L1 chain.
     pub async fn fetch<Tr: Transport>(
         &mut self,
-        transport: &Web3<Tr>,
+        transport: Web3<Tr>,
     ) -> Result<Vec<T>, FetchError> {
         // Algorithm overview.
         //
@@ -114,7 +114,7 @@ where
                 .to_block(BlockNumber::Number(to_block.into()))
                 .build();
 
-            let logs = match get_logs(transport, filter).await {
+            let logs = match get_logs(&transport, filter).await {
                 Ok(logs) => logs,
                 Err(GetLogsError::QueryLimit) => {
                     stride_cap = Some(self.stride);
@@ -189,7 +189,7 @@ where
             }
 
             if let Some(head) = logs.last() {
-                self.head = Some(head.clone());
+                self.head = Some(*head);
             }
 
             return Ok(logs);
@@ -260,12 +260,12 @@ mod tests {
         let transport = test_transport(chain);
         let mut block_number = 1;
 
-        let logs = root_fetcher.fetch(&transport).await.unwrap();
+        let logs = root_fetcher.fetch(transport.clone()).await.unwrap();
         for log in logs {
             assert_eq!(log.block_number.0, block_number, "First fetch");
             block_number += 1;
         }
-        let logs = root_fetcher.fetch(&transport).await.unwrap();
+        let logs = root_fetcher.fetch(transport.clone()).await.unwrap();
         for log in logs {
             assert_eq!(log.block_number.0, block_number, "Second fetch");
             block_number += 1;

@@ -222,7 +222,7 @@ mod tests {
         // the block number sequence.
         let chain = crate::ethereum::Chain::Goerli;
         let mut fetcher = BackwardLogFetcher::<StateUpdateLog, StateUpdateLog>::new(
-            EitherMetaLog::Left(update_log.clone()),
+            EitherMetaLog::Left(update_log),
             chain,
         );
 

@@ -60,7 +60,7 @@ mod tests {
         let transport = test_transport(chain);
 
         let mut uut = StateRootFetcher::new(None, chain);
-        let first_fetch = uut.fetch(&transport).await.unwrap();
+        let first_fetch = uut.fetch(transport).await.unwrap();
         let first = first_fetch.first().expect("Should be at least one log");
 
         assert_eq!(first.block_number, StarknetBlockNumber(0));
@@ -173,7 +173,7 @@ mod tests {
             };
 
             let mut uut = StateRootFetcher::new(Some(not_genesis), chain);
-            assert_matches!(uut.fetch(&transport).await, Err(FetchError::Reorg));
+            assert_matches!(uut.fetch(transport).await, Err(FetchError::Reorg));
         }
 
         #[tokio::test]
@@ -203,7 +203,7 @@ mod tests {
             };
 
             let mut uut = StateRootFetcher::new(Some(not_genesis), chain);
-            assert_matches!(uut.fetch(&transport).await, Err(FetchError::Reorg));
+            assert_matches!(uut.fetch(transport).await, Err(FetchError::Reorg));
         }
     }
 }

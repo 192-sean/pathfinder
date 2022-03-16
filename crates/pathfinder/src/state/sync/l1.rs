@@ -1,7 +1,8 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Context;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot, RwLock};
 use web3::{transports::Http, Web3};
 
 use crate::{
@@ -38,7 +39,7 @@ pub async fn sync(
     head: Option<StateUpdateLog>,
 ) -> anyhow::Result<()> {
     let eth_api = EthereumImpl {
-        logs: StateRootFetcher::new(head, chain),
+        logs: Arc::new(RwLock::new(StateRootFetcher::new(head, chain))),
         transport,
     };
 
@@ -51,9 +52,9 @@ pub async fn sync(
 trait EthereumApi {
     async fn fetch_logs(&mut self) -> Result<Vec<StateUpdateLog>, FetchError>;
 
-    fn set_log_head(&mut self, head: Option<StateUpdateLog>);
+    async fn set_log_head(&mut self, head: Option<StateUpdateLog>);
 
-    fn log_head(&mut self) -> &Option<StateUpdateLog>;
+    async fn log_head(&mut self) -> Option<StateUpdateLog>;
 
     async fn block_hash(
         &self,
@@ -62,22 +63,22 @@ trait EthereumApi {
 }
 
 struct EthereumImpl {
-    logs: StateRootFetcher,
+    logs: Arc<RwLock<StateRootFetcher>>,
     transport: Web3<Http>,
 }
 
 #[async_trait::async_trait]
 impl EthereumApi for EthereumImpl {
     async fn fetch_logs(&mut self) -> Result<Vec<StateUpdateLog>, FetchError> {
-        self.logs.fetch(&self.transport).await
+        self.logs.write().await.fetch(self.transport.clone()).await
     }
 
-    fn set_log_head(&mut self, head: Option<StateUpdateLog>) {
-        self.logs.set_head(head);
+    async fn set_log_head(&mut self, head: Option<StateUpdateLog>) {
+        self.logs.write().await.set_head(head);
     }
 
-    fn log_head(&mut self) -> &Option<StateUpdateLog> {
-        self.logs.head()
+    async fn log_head(&mut self) -> Option<StateUpdateLog> {
+        self.logs.read().await.head()
     }
 
     async fn block_hash(
@@ -157,7 +158,7 @@ async fn sync_impl(
                 // Unwrap is safe as it is not be possible to get a reorg event if there
                 // was no latest log to reorg against. We know that this block already needs to
                 // be reorg'd since it triggered the reorg in the first place.
-                let mut reorg_tail = eth_api.log_head().clone().unwrap();
+                let mut reorg_tail = eth_api.log_head().await.unwrap();
 
                 // Check each Starknet block in reverse history order, until we find a still
                 // valid block. This becomes the new head of our L1 state.
@@ -212,7 +213,7 @@ async fn sync_impl(
                 }
 
                 // Update the Ethereum log fetcher.
-                eth_api.set_log_head(new_head);
+                eth_api.set_log_head(new_head).await;
             }
             Err(FetchError::Other(other)) => anyhow::bail!(other),
         }
@@ -386,8 +387,8 @@ mod tests {
                     .collect::<Vec<_>>();
 
                 const REORG_COUNT: usize = 4;
-                let expected_tail = logs.iter().rev().nth(REORG_COUNT).unwrap().clone();
-                let expected_head = logs.iter().rev().nth(REORG_COUNT + 1).unwrap().clone();
+                let expected_tail = logs.iter().rev().nth(REORG_COUNT).unwrap();
+                let expected_head = logs.iter().rev().nth(REORG_COUNT + 1).unwrap();
 
                 let mut mock_fetcher = MockEthereumApi::new();
                 let mut seq = mockall::Sequence::new();
@@ -407,7 +408,7 @@ mod tests {
                 mock_fetcher
                     .expect_log_head()
                     .return_const(logs.last().cloned());
-                let mock_head = expected_head.clone();
+                let mock_head = *expected_head;
                 mock_fetcher.expect_block_hash().returning(move |block| {
                     if block == mock_head.origin.block.number {
                         Ok(Some(mock_head.origin.block.hash))
@@ -415,7 +416,7 @@ mod tests {
                         Ok(Some(EthereumBlockHash(H256::from_low_u64_be(66666))))
                     }
                 });
-                let mock_head = Some(expected_head);
+                let mock_head = Some(*expected_head);
                 mock_fetcher
                     .expect_set_log_head()
                     .times(1)
@@ -439,11 +440,11 @@ mod tests {
 
                 // Answer the get update requests.
                 for i in 0..REORG_COUNT + 1 {
-                    let log = logs[logs.len() - 2 - i].clone();
+                    let log = logs[logs.len() - 2 - i];
                     match rx_event.recv().await.unwrap() {
                         Event::QueryUpdate(block, tx) => {
                             assert_eq!(block, log.block_number);
-                            tx.send(Some(log.clone())).unwrap();
+                            tx.send(Some(log)).unwrap();
                         }
                         _other => panic!("Expected GetUpdate event"),
                     }
@@ -530,7 +531,7 @@ mod tests {
                     match rx_event.recv().await.unwrap() {
                         Event::QueryUpdate(block, tx) => {
                             assert_eq!(block, log.block_number);
-                            tx.send(Some(log.clone())).unwrap();
+                            tx.send(Some(*log)).unwrap();
                         }
                         _other => panic!("Expected GetUpdate event"),
                     }
@@ -610,11 +611,11 @@ mod tests {
                 }
 
                 for i in 0..4 {
-                    let log = logs[logs.len() - 2 - i].clone();
+                    let log = logs[logs.len() - 2 - i];
                     match rx_event.recv().await.unwrap() {
                         Event::QueryUpdate(block, tx) => {
                             assert_eq!(block, log.block_number);
-                            tx.send(Some(log.clone())).unwrap();
+                            tx.send(Some(log)).unwrap();
                         }
                         _other => panic!("Expected GetUpdate event"),
                     }
