@@ -5,7 +5,7 @@ use crate::core::{
     L1ToL2MessagePayloadElem, L2ToL1MessagePayloadElem, TransactionSignatureElem,
 };
 use num_bigint::BigUint;
-use pedersen::{HexParseError, OverflowError, StarkHash};
+use pedersen_hash::{HexParseError, OverflowError, StarkHash};
 use serde_with::serde_conv;
 use std::str::FromStr;
 use web3::types::{H128, H160, H256};
@@ -298,7 +298,7 @@ mod tests {
             0, 0, 1, 0,
         ];
 
-        use pedersen::HexParseError;
+        use pedersen_hash::HexParseError;
         assert_eq!(
             starkhash_from_biguint(BigUint::from_bytes_be(&TOO_LONG_BYTES)),
             Err(OverflowError)

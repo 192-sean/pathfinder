@@ -1,7 +1,7 @@
 use anyhow::{Context, Error, Result};
 use bitvec::prelude::BitView;
-use pedersen::pedersen_hash;
-use pedersen::StarkHash;
+use pedersen_hash::pedersen_hash;
+use pedersen_hash::StarkHash;
 use web3::types::H160;
 
 use crate::core::StarknetBlockHash;

@@ -22,7 +22,7 @@ use crate::{
 };
 
 use anyhow::Context;
-use pedersen::StarkHash;
+use pedersen_hash::StarkHash;
 use rusqlite::{Connection, Transaction};
 use tokio::sync::{mpsc, RwLock};
 use web3::Web3;
@@ -600,7 +600,7 @@ mod tests {
         stream::{StreamExt, TryStreamExt},
     };
     use jsonrpc_core::{Call, Value};
-    use pedersen::StarkHash;
+    use pedersen_hash::StarkHash;
     use std::{sync::Arc, time::Duration};
     use tokio::sync::mpsc;
     use web3::{error, types::H256, RequestId, Transport, Web3};

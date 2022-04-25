@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/pathfinder",
-    "crates/pedersen",
+    "crates/pedersen_curve",
+    "crates/pedersen_hash",
 ]
 resolver = "2"

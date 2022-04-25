@@ -1,12 +1,12 @@
 use std::error::Error;
 
-use crate::curve::{
+use pedersen_curve::{
     AffinePoint, ProjectivePoint, PEDERSEN_P0, PEDERSEN_P1, PEDERSEN_P2, PEDERSEN_P3, PEDERSEN_P4,
 };
 use crate::curve_consts::{
     CURVE_CONSTS_BITS, CURVE_CONSTS_P1, CURVE_CONSTS_P2, CURVE_CONSTS_P3, CURVE_CONSTS_P4,
 };
-use crate::field::{FieldElement, FieldElementRepr};
+use pedersen_curve::{FieldElement, FieldElementRepr};
 
 use bitvec::{field::BitField, order::Msb0, slice::BitSlice, view::BitView};
 use ff::PrimeField;

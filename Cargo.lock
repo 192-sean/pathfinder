@@ -1865,7 +1865,7 @@ dependencies = [
  "lazy_static",
  "mockall",
  "num-bigint 0.4.3",
- "pedersen",
+ "pedersen_hash",
  "pretty_assertions",
  "reqwest",
  "rusqlite",
@@ -1889,7 +1889,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "pedersen"
+name = "pedersen_curve"
+version = "0.1.0"
+dependencies = [
+ "bitvec",
+ "ff",
+ "pretty_assertions",
+]
+
+[[package]]
+name = "pedersen_hash"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
@@ -1897,6 +1906,7 @@ dependencies = [
  "criterion",
  "ff",
  "hex",
+ "pedersen_curve",
  "pretty_assertions",
  "serde",
  "serde_json",

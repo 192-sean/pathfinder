@@ -320,7 +320,7 @@ pub(crate) fn migrate(transaction: &Transaction) -> anyhow::Result<PostMigration
 
 #[cfg(test)]
 mod tests {
-    use pedersen::StarkHash;
+    use pedersen_hash::StarkHash;
     use rusqlite::Connection;
 
     use crate::{

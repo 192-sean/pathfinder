@@ -132,7 +132,7 @@ mod tests {
     }
 
     mod reorg {
-        use pedersen::StarkHash;
+        use pedersen_hash::StarkHash;
         use web3::types::H256;
 
         use crate::{
