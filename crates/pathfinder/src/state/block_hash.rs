@@ -1,6 +1,6 @@
 use anyhow::{Context, Error, Result};
 use bitvec::prelude::BitView;
-use pedersen::hash::pedersen_hash;
+use pedersen::pedersen_hash;
 use pedersen::StarkHash;
 use web3::types::H160;
 
